@@ -1,4 +1,13 @@
-XBMCnfoMoviesImporter.bundle-for-Plex
+JAVnfoMoviesImporter.bundle-for-Plex
+
+=====================================
+
+修改自原版[XBMCnfoMoviesImporter.bundle](https://github.com/gboudreau/XBMCnfoMoviesImporter.bundle). 安装方式和原来相同.
+
+增加了女优图像刮削的功能, 目前取自[gfriends](https://github.com/ddd354/gfriends), 仍有不完善之处, 待原作者更新以后会及时跟进.
+
+<img src="demo/demo.png" width="80%"/><br>
+
 =====================================
 ### Installation:
 It is recommended to install the [WebTools plugin](http://forums.plex.tv/discussion/288191/webtools-unsupported-appstore/p1).
