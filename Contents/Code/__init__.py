@@ -73,8 +73,8 @@ RATING_REGEX_2 = re.compile(r'\s*\(.*?\)')
 
 
 def get_gfriends_map():
-    github_template = 'http://raw.githubusercontent.com/ddd354/gfriends/master/{}/{}/{}'
-    request_url = 'http://raw.githubusercontent.com/ddd354/gfriends/master/Filetree.json'
+    github_template = 'http://raw.githubusercontent.com/xinxin8816/gfriends/master/{}/{}/{}'
+    request_url = 'http://raw.githubusercontent.com/xinxin8816/gfriends/master/Filetree.json'
     context = getattr(ssl, '_create_unverified_context')()
     response = urllib.urlopen(request_url, context=context)
     if response.code != 200:
