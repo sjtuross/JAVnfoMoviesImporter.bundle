@@ -237,40 +237,6 @@ class JAVNFO(PlexAgent):
                     id = str(abs(hash(int(id))))
                     media.id = id
                     log.debug('ID generated: {id}'.format(id=media.id))
-                
-                # Actors
-                # TODO: not sure this would work
-                rroles = []
-                media.roles.clear()
-                gfriends_map = get_gfriends_map()
-                log.debug(gfriends_map)
-                for n, actor in enumerate(nfo_xml.xpath('actor')):
-                    newrole = media.roles.new()
-                    try:
-                        newrole.name = actor.xpath('name')[0].text
-                    except:
-                        newrole.name = 'Unknown Name ' + str(n)
-                        pass
-                    try:
-                        role = actor.xpath('role')[0].text
-                        if role in rroles:
-                            newrole.role = role + ' ' + str(n)
-                        else:
-                            newrole.role = role
-                        rroles.append (newrole.role)
-                    except:
-                        newrole.role = 'Unknown Role ' + str(n)
-                        pass
-                    newrole.photo = ''
-                    athumbloc = preferences['athumblocation']
-
-                    # brand new jav actor logic:
-                    aname = actor.xpath('name')[0].text
-                    newrole.photo = gfriends_map.get(aname.upper(), '')
-                    if newrole.photo:
-                        log.debug('{} found url {}'.format(aname, newrole.photo))
-                    else:
-                        log.debug('cannot find {} in gfriends mapping length {}'.format(aname, len(gfriends_map.keys())))
 
                 results.Append(Metadata(id=media.id, name=media.name, year=media.year, lang=lang, score=100))
 
