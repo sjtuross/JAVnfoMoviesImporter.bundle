@@ -29,6 +29,7 @@ import urlparse
 import subtitles
 import json
 import ssl
+from io import open
 
 if sys.version_info < (3, 0):
     from htmlentitydefs import name2codepoint
@@ -72,28 +73,55 @@ RATING_REGEX_1 = re.compile(
 RATING_REGEX_2 = re.compile(r'\s*\(.*?\)')
 
 
-def get_gfriends_map():
-    github_template = 'http://raw.githubusercontent.com/xinxin8816/gfriends/master/{}/{}/{}'
+def get_gfriends_www():
     request_url = 'http://raw.githubusercontent.com/xinxin8816/gfriends/master/Filetree.json'
     context = getattr(ssl, '_create_unverified_context')()
-    response = urllib.urlopen(request_url, context=context)
-    if response.code != 200:
-        log.debug('request gfriend map failed {}'.format(response.code))
-        return {}
+    try:
+        response = urllib.urlopen(request_url, context=context)
+        map_json = json.load(response)
+    except Exception as e:
+        log.debug('error {} in original url request, trying for alternative'.format(e))
+        try:
+            request_url = 'http://raw.fastgit.org/xinxin8816/gfriends/master/Filetree.json'
+            response = urllib.urlopen(request_url, context=context)
+            map_json = json.load(response)
+        except Exception as e:
+            log.debug('load json from {} failed for {}'.format(request_url, e))
+            raise Exception('Fail to download Filetree')
+    
+    # update local filetree to latest version
+    update_local_filetree(map_json)
+    return map_json
 
-    map_json = json.load(response)
-    map_json.pop('Filetree.json', None)
-    map_json.pop('README.md', None)
-    #log.debug(map_json)
+
+def get_local_filetree():
+    return Core.storage.join_path(Core.app_support_path, Core.config.bundles_dir_name, 'JAVnfoMoviesImporter.bundle', 'Filetree.json')
+
+
+def update_local_filetree(write_data):
+    with open(get_local_filetree(), 'w', encoding='utf-8') as f_out:
+        f_out.write(unicode(json.dumps(write_data, ensure_ascii=False)))
+        log.debug('update local filetree to latest')
+
+
+def get_gfriends_map():
+    github_template = 'http://raw.githubusercontent.com/xinxin8816/gfriends/master/Content/{}/{}'
+    
+    try:
+        map_json = get_gfriends_www()
+    except Exception as e:
+        # fallback to local file
+        log.debug('error in getting online map for {}, use local backup'.format(e))
+        with open(get_local_filetree()) as local_json:
+            map_json = json.load(local_json)
     output = {}
 
-    # plex doesnt support fucking recursive call
-    first_lvls = map_json.keys()
-    for first in first_lvls:
-        second_lvls = map_json[first].keys()
-        for second in second_lvls:
-            for k, v in map_json[first][second].items():
-                output[k[:-4]] = github_template.format(first, second, v)
+    # plex doesnt support fxcking recursive call
+    first = 'Content'  # this has become static
+    second_lvls = map_json[first].keys()
+    for second in second_lvls:
+        for k, v in map_json[first][second].items():
+            output[k[:-4]] = github_template.format(second, v)
 
     #log.debug(output)
     return output
@@ -742,7 +770,8 @@ class JAVNFO(PlexAgent):
                 rroles = []
                 metadata.roles.clear()
                 gfriends_map = get_gfriends_map()
-                log.debug(gfriends_map)
+                # log.debug(gfriends_map)
+                gf_found = []
                 for n, actor in enumerate(nfo_xml.xpath('actor')):
                     newrole = metadata.roles.new()
                     try:
@@ -750,80 +779,32 @@ class JAVNFO(PlexAgent):
                     except:
                         newrole.name = 'Unknown Name ' + str(n)
                         pass
-                    try:
-                        role = actor.xpath('role')[0].text
-                        if role in rroles:
-                            newrole.role = role + ' ' + str(n)
-                        else:
-                            newrole.role = role
-                        rroles.append (newrole.role)
-                    except:
-                        newrole.role = 'Unknown Role ' + str(n)
-                        pass
                     newrole.photo = ''
-                    athumbloc = preferences['athumblocation']
 
-                    # brand new jav actor logic:
+                    # Brand new jav actor logic
+                    # for actor photo
                     aname = actor.xpath('name')[0].text
                     newrole.photo = gfriends_map.get(aname.upper(), '')
                     if newrole.photo:
                         log.debug('{} found url {}'.format(aname, newrole.photo))
+                        gf_found.append(aname)
                     else:
                         log.debug('cannot find {} in gfriends mapping length {}'.format(aname, len(gfriends_map.keys())))
 
-                    """if athumbloc in ['local','global']:
-                        aname = None
-                        try:
-                            try:
-                                aname = actor.xpath('name')[0].text
-                            except:
-                                pass
-                            if aname:
-                                aimagefilename = aname.replace(' ', '_') + '.jpg'
-                                athumbpath = preferences['athumbpath'].rstrip ('/')
-                                if not athumbpath == '':
-                                    if athumbloc == 'local':
-                                        localpath = os.path.join (folder_path,'.actors',aimagefilename)
-                                        scheme, netloc, path, qs, anchor = urlparse.urlsplit(athumbpath)
-                                        basepath = os.path.basename (path)
-                                        log.debug ('Searching for additional path parts after: ' + basepath)
-                                        searchpos = folder_path.find (basepath)
-                                        addpos = searchpos + len(basepath)
-                                        addpath = os.path.dirname(folder_path)[addpos:]
-                                        if searchpos != -1 and addpath !='':
-                                            log.debug ('Found additional path parts: ' + addpath)
-                                        else:
-                                            addpath = ''
-                                            log.debug ('Found no additional path parts.')
-                                        aimagepath = athumbpath + addpath + '/' + os.path.basename(folder_path) + '/.actors/' + aimagefilename
-                                        if not os.path.isfile(localpath):
-                                            log.debug ('failed setting ' + athumbloc + ' actor photo: ' + aimagepath)
-                                            aimagepath = None
-                                    if athumbloc == 'global':
-                                        aimagepath = athumbpath + '/' + aimagefilename
-                                        scheme, netloc, path, qs, anchor = urlparse.urlsplit(aimagepath)
-                                        path = urllib.quote(path.encode('utf-8'))
-                                        path = urllib.quote(path, '/%')
-                                        qs = urllib.quote_plus(qs, ':&=')
-                                        aimagepathurl = urlparse.urlunsplit((scheme, netloc, path, qs, anchor))
-                                        response = urllib.urlopen(aimagepathurl).code
-                                        if not response == 200:
-                                            log.debug ('failed setting ' + athumbloc + ' actor photo: ' + aimagepath)
-                                            aimagepath = None
-                                    if aimagepath:
-                                        newrole.photo = aimagepath
-                                        log.debug ('success setting ' + athumbloc + ' actor photo: ' + aimagepath)
-                        except:
-                            log.debug ('exception setting local or global actor photo!')
-                            log.debug ("Traceback: " + traceback.format_exc())
-                            pass
-                    if athumbloc == 'link' or not newrole.photo:
-                        try:
-                            newrole.photo = actor.xpath('thumb')[0].text
-                            log.debug ('linked actor photo: ' + newrole.photo)
-                        except:
-                            log.debug ('failed setting linked actor photo!')
-                            pass"""
+                    try:
+                        role = actor.xpath('role')[0].text
+                        if role in rroles:
+                            newrole.role = role + ' ' + str(n+1)
+                        else:
+                            newrole.role = role
+                        rroles.append (newrole.role)
+                    except:
+                        if len(gf_found)>0 and aname in gf_found:
+                            newrole.role = '女优' + str(gf_found.index(aname)+1)
+                        else:
+                            newrole.role = 'Unknown Role ' + str(n+1)
+                        pass
+                    
 
                 if not preferences['localmediaagent']:
                     # Trailer Support

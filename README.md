@@ -6,7 +6,13 @@ JAVnfoMoviesImporter.bundle-for-Plex
 
 增加了女优图像刮削的功能, 目前取自[gfriends](https://github.com/ddd354/gfriends), 仍有不完善之处, 待原作者更新以后会及时跟进.
 
+去除了本地演员的图片的支持, 请只用于合适的库.
+
 <img src="demo/demo.png" width="80%"/><br>
+
+=====================================
+
+新增本地**Filetree.json**以便网络访问失败时作为备份使用, 成功从github上取得最新版本的时候会更新本地版本.
 
 =====================================
 ### Installation:
