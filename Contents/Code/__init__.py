@@ -18,7 +18,6 @@ CREDITS:
     Subtitle support and some fixes: glitch452
 """
 
-from ast import Raise
 from datetime import datetime
 import os
 import re
